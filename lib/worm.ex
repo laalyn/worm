@@ -30,10 +30,10 @@ defmodule Worm do
     System.cmd("mkdir", ["#{dir_name}/lib/#{app_name}/schemas"])
     System.cmd("mkdir", ["#{dir_name}/lib/#{app_name}/modules"])
 
-    System.cmd("sed", ["-i", "18d", "#{dir_name}/config/config.exs"])
-    System.cmd("sed", ["-i", "17a\\  secret_key_base: System.get_env(\\\"SECRET_KEY_BASE\\\"),", "#{dir_name}/config/config.exs"])
-    System.cmd("sed", ["-i", "21d", "#{dir_name}/config/config.exs"])
-    System.cmd("sed", ["-i", "20a\\  live_view: [signing_salt: System.get_env(\\\"SIGNING_SALT\\\")]", "#{dir_name}/config/config.exs"])
+    System.cmd("sed", ["-i", "17d", "#{dir_name}/config/config.exs"])
+    System.cmd("sed", ["-i", "16a\\  secret_key_base: System.get_env(\\\"SECRET_KEY_BASE\\\"),", "#{dir_name}/config/config.exs"])
+    System.cmd("sed", ["-i", "20d", "#{dir_name}/config/config.exs"])
+    System.cmd("sed", ["-i", "19a\\  live_view: [signing_salt: System.get_env(\\\"SIGNING_SALT\\\")]", "#{dir_name}/config/config.exs"])
 
     System.cmd("sed", ["-i", "5d", "#{dir_name}/config/dev.exs"])
     System.cmd("sed", ["-i", "4a\\  username: System.get_env(\\\"DB_USERNAME\\\"),", "#{dir_name}/config/dev.exs"])

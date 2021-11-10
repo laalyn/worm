@@ -1,6 +1,6 @@
 # Worm
 
-**TODO: Add description**
+**Compatible with phx_new 1.5.13**
 
 ## Installation
 
