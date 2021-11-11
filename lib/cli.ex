@@ -14,6 +14,7 @@ defmodule Worm.CLI do
       shortcuts: [
         {"&usec", "utc_datetime_usec"},
         {"&sec", "utc_datetime"},
+        {"&bid", "binary_id"},
         {"&m", module_name},
         {"&app", app_name},
         {"&dir", dir_name},
