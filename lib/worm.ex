@@ -226,6 +226,8 @@ end"
           |> String.replace("&cur", file)
           |> String.replace("&ins-beg", "sed -i '$ ! s/$/\\\\/' #{file} && sed -i \"")
           |> String.replace("&ins-end", "i$(cat #{file})\"")
+          |> String.replace("&{", "sed -i '$ ! s/$/\\\\/' #{file} && sed -i \"")
+          |> String.replace("&}", "i$(cat #{file})\"")
 
       x
       |> IO.puts
@@ -309,15 +311,15 @@ end"
         lines = body
                 |> String.split("\n")
 
-        {mig_lines, sch_lines, indexes, uniq_indexes, _} = lines
-                                                           |> Enum.with_index(
+        {mig_lines, sch_lines, indexes, uniq_indexes, constraints, _} = lines
+                                                                        |> Enum.with_index(
         )
-        |> Enum.reduce({[], [], %{}, %{}, nil}, fn ({cur, i}, {mig_lines, sch_lines, indexes, uniq_indexes, extend}) ->
+        |> Enum.reduce({[], [], %{}, %{}, [], nil}, fn ({cur, i}, {mig_lines, sch_lines, indexes, uniq_indexes, constraints, extend}) ->
           if extend do
             {headers, body, i} = extend
 
             if cur == "" do
-              {mig_line, sch_line, new_indexes, new_uniq_indexes} = parse_schema_field(headers, body, file_name, i, module_name, agent)
+              {mig_line, sch_line, new_indexes, new_uniq_indexes, new_constraints} = parse_schema_field(headers, body, file_name, i, module_name, agent)
 
               indexes = Enum.reduce(new_indexes, indexes, fn ({field, level}, acc) ->
                 existing = if acc[level] === nil do
@@ -343,14 +345,14 @@ end"
 
               { (if mig_line, do: [mig_line | mig_lines], else: mig_lines),
                 (if sch_line, do: [sch_line | sch_lines], else: sch_lines),
-              indexes, uniq_indexes, nil}
+              indexes, uniq_indexes, new_constraints ++ constraints, nil}
             else
               cur = cur
                     |> to_charlist
                     |> tl |> tl
                     |> to_string
 
-              {mig_lines, sch_lines, indexes, uniq_indexes, {headers, body <> cur <> "\n", i}}
+              {mig_lines, sch_lines, indexes, uniq_indexes, constraints, {headers, body <> cur <> "\n", i}}
             end
           else
             if cur != "" do
@@ -358,7 +360,7 @@ end"
                        |> String.split(" ", trim: true)
 
               if length(tokens) <= 2 do
-                {mig_line, sch_line, new_indexes, new_uniq_indexes} = parse_schema_field(tokens, nil, file_name, num + i, module_name, agent)
+                {mig_line, sch_line, new_indexes, new_uniq_indexes, new_constraints} = parse_schema_field(tokens, nil, file_name, num + i, module_name, agent)
 
                 indexes = Enum.reduce(new_indexes, indexes, fn ({field, level}, acc) ->
                   existing = if acc[level] === nil do
@@ -384,12 +386,12 @@ end"
 
                 { (if mig_line, do: [mig_line | mig_lines], else: mig_lines),
                   (if sch_line, do: [sch_line | sch_lines], else: sch_lines),
-                  indexes, uniq_indexes, nil}
+                  indexes, uniq_indexes, new_constraints ++ constraints, nil}
               else
-                {mig_lines, sch_lines, indexes, uniq_indexes, {tokens, "", num + i}}
+                {mig_lines, sch_lines, indexes, uniq_indexes, constraints, {tokens, "", num + i}}
               end
             else
-              {mig_lines, sch_lines, indexes, uniq_indexes, extend}
+              {mig_lines, sch_lines, indexes, uniq_indexes, constraints, extend}
             end
           end
         end)
@@ -507,6 +509,16 @@ end"
           end
         end)
 
+        if constraints != [] do
+          :os.cmd('echo "" >> #{file}')
+        end
+
+        constraints
+        |> Enum.reverse()
+        |> Enum.each(fn ({cname, check}) ->
+          File.write(file, "    create constraint(:#{name}, :#{cname}, check: \"#{check}\")\n", [:append])
+        end)
+
         :os.cmd('echo "  end" >> #{file}')
         :os.cmd('echo "end" >> #{file}')
 
@@ -535,10 +547,40 @@ end"
 
     [field, type | _] = headers
 
-    field
-    |> apply_shortcuts(agent)
+    field = field
+            |> apply_shortcuts(agent)
 
-    {mig_type, sch_type, indexes, uniq_indexes} = case type do
+    {mig_type, sch_type, indexes, uniq_indexes, constraints} = case type do
+      "&int" ->
+        {":integer", ":integer", [], [], []}
+      "&long" ->
+        {":bigint", ":integer", [], [], []}
+      "&str" ->
+        {":string", ":string", [], [], [{"#{field}_nonempty_string", "#{field} != ''"}]}
+      "&str{" <> dat ->
+        dat = dat
+              |> String.reverse()
+
+        "}" <> dat = dat
+
+        len = dat
+              |> String.reverse()
+              |> String.to_integer()
+
+        {":string, size: #{len}", ":string", [], [], [{"#{field}_nonempty_string", "#{field} != ''"}]}
+      "&txt" ->
+        {":text", ":string", [], [], [{"#{field}_nonempty_string", "#{field} != ''"}]}
+      "&txt{" <> dat ->
+        dat = dat
+              |> String.reverse()
+
+        "}" <> dat = dat
+
+        len = dat
+              |> String.reverse()
+              |> String.to_integer()
+
+        {":text", ":string", [], [], [{"#{field}_strlen_lte_#{len}", "length(#{field}) <= #{len}"}, {"#{field}_nonempty_string", "#{field} != ''"}]}
       "&r{" <> dat ->
         dat = dat
               |> String.reverse()
@@ -583,23 +625,23 @@ end"
 
         case c do
           "UD" ->
-            {"references(:#{a}, [type: :#{b}, on_update: :update_all, on_delete: :delete_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], []}
+            {"references(:#{a}, [type: :#{b}, on_update: :update_all, on_delete: :delete_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
           "Ud" ->
-            {"references(:#{a}, [type: :#{b}, on_update: :update_all, on_delete: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], []}
+            {"references(:#{a}, [type: :#{b}, on_update: :update_all, on_delete: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
           "uD" ->
-            {"references(:#{a}, [type: :#{b}, on_update: :nilify_all, on_delete: :delete_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], []}
+            {"references(:#{a}, [type: :#{b}, on_update: :nilify_all, on_delete: :delete_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
           "ud" ->
-            {"references(:#{a}, [type: :#{b}, on_update: :nilify_all, on_delete: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], []}
+            {"references(:#{a}, [type: :#{b}, on_update: :nilify_all, on_delete: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
           "U" ->
-            {"references(:#{a}, [type: :#{b}, on_update: :update_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], []}
+            {"references(:#{a}, [type: :#{b}, on_update: :update_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
           "u" ->
-            {"references(:#{a}, [type: :#{b}, on_update: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], []}
+            {"references(:#{a}, [type: :#{b}, on_update: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
           "D" ->
-            {"references(:#{a}, [type: :#{b}, on_delete: :delete_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], []}
+            {"references(:#{a}, [type: :#{b}, on_delete: :delete_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
           "d" ->
-            {"references(:#{a}, [type: :#{b}, on_delete: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], []}
+            {"references(:#{a}, [type: :#{b}, on_delete: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
           "" ->
-            {"references(:#{a}, [type: :#{b}])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], []}
+            {"references(:#{a}, [type: :#{b}])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
         end
       # TODO `` for type
       _ ->
@@ -621,9 +663,9 @@ end"
                 ":" <> sch
             end
 
-            {":" <> mig, sch, [], []}
+            {":" <> mig, sch, [], [], []}
           [one] ->
-            {":" <> one, ":" <> one, [], []}
+            {":" <> one, ":" <> one, [], [], []}
         end
     end
 
@@ -710,7 +752,7 @@ end"
       {indexes, uniq_indexes}
     end
 
-    {mig_line, sch_line, indexes, uniq_indexes}
+    {mig_line, sch_line, indexes, uniq_indexes, constraints}
   end
 
   defp parse_route(headers, body, file_name, num, dir_name, app_name, module_name, agent) do
@@ -1289,8 +1331,14 @@ end"
             end
           "tt" ->
             tvar = type
+                   |> apply_shortcuts(agent)
+                   |> String.replace("&cur", field)
 
             [type] = extra
+
+            type = type
+                   |> apply_shortcuts(agent)
+                   |> String.replace("&cur", field)
 
             case type do
               "~" <> n ->
