@@ -78,6 +78,8 @@ defmodule Worm do
         |> elem(0)
       %Ecto.ConstraintError{constraint: c, type: t} ->
         \\\"\#{t} \#{c}\\\"
+      %Postgrex.Error{postgres: %{constraint: c, code: t}} ->
+        \\\"\#{t} \#{c}\\\"
       %RuntimeError{} = run_err ->
         run_err.message
       msg ->
