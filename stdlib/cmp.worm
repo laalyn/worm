@@ -1,0 +1,24 @@
+-- cmp, some of these override default behavior
+c == &_==&_
+c != &_!=&_
+c < &_<&_
+-- c > &_>&_ conflicts with tab
+c gt &_>&_
+c <= &_<=&_
+c >= &_>=&_
+c in &_in&_
+c notin &_not&_in&_
+c |> &_|>&_
+c eq &_=&_
+
+-- cmp on &cur
+c c== &cur&_==&_
+c c!= &cur&_!=&_
+c c< &cur&_<&_
+c c> &cur&_>&_
+c c<= &cur&_<=&_
+c c>= &cur&_>=&_
+c cin &cur&_in&_
+c cnotin &cur&_not&_in&_
+c c|> &cur&_|>&_
+c ceq &cur&_=&_
