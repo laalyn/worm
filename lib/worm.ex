@@ -1,3 +1,9 @@
+# --- cleanliness and enjoyability
+# TODO unverbosify inspects
+# TODO easy code edit tools
+# --- performance
+# TODO dont rebuild untouched files (imp this)
+# TODO files in /dev/shm
 defmodule Worm do
   def init(dir_name, app_name, module_name) do
     # out folder is completely tmp
@@ -30,10 +36,10 @@ defmodule Worm do
     System.cmd("mkdir", ["#{dir_name}/lib/#{app_name}/schemas"])
     System.cmd("mkdir", ["#{dir_name}/lib/#{app_name}/modules"])
 
-    System.cmd("sed", ["-i", "17d", "#{dir_name}/config/config.exs"])
-    System.cmd("sed", ["-i", "16a\\  secret_key_base: System.get_env(\\\"SECRET_KEY_BASE\\\"),", "#{dir_name}/config/config.exs"])
-    System.cmd("sed", ["-i", "20d", "#{dir_name}/config/config.exs"])
-    System.cmd("sed", ["-i", "19a\\  live_view: [signing_salt: System.get_env(\\\"SIGNING_SALT\\\")]", "#{dir_name}/config/config.exs"])
+    # System.cmd("sed", ["-i", "17d", "#{dir_name}/config/config.exs"])
+    # System.cmd("sed", ["-i", "16a\\  secret_key_base: System.get_env(\\\"SECRET_KEY_BASE\\\"),", "#{dir_name}/config/config.exs"])
+    # System.cmd("sed", ["-i", "20d", "#{dir_name}/config/config.exs"])
+    # System.cmd("sed", ["-i", "19a\\  live_view: [signing_salt: System.get_env(\\\"SIGNING_SALT\\\")]", "#{dir_name}/config/config.exs"])
 
     System.cmd("sed", ["-i", "5d", "#{dir_name}/config/dev.exs"])
     System.cmd("sed", ["-i", "4a\\  username: System.get_env(\\\"DB_USERNAME\\\"),", "#{dir_name}/config/dev.exs"])
@@ -93,6 +99,37 @@ defmodule Worm do
 end"
 
     :os.cmd('echo "#{w}" > #{dir_name}/lib/#{app_name}_web/controllers/fallback_controller.ex')
+
+    w =
+"# General application configuration
+use Mix.Config
+
+config :#{app_name},
+  namespace: #{module_name},
+  ecto_repos: [#{module_name}.Repo],
+  generators: [binary_id: true]
+
+# Configures the endpoint
+config :#{app_name}, #{module_name}Web.Endpoint,
+  url: [host: \"localhost\"],
+  secret_key_base: System.get_env(\"SECRET_KEY_BASE\"),
+  render_errors: [view: #{module_name}Web.ErrorView, accepts: ~w(json), layout: false],
+  pubsub_server: #{module_name}.PubSub,
+  live_view: [signing_salt: System.get_env(\"SIGNING_SALT\")]
+
+# Configures Elixir's Logger
+config :logger, :console,
+  format: \"$time $metadata[$level] $message\\n\",
+  metadata: [:request_id]
+
+# Use Jason for JSON parsing in Phoenix
+config :phoenix, :json_library, Jason
+
+# Import environment specific config. This must remain at the bottom
+# of this file so it overrides the configuration defined above.
+import_config \"\#{Mix.env()}.exs\""
+
+    File.write!("#{dir_name}/config/config.exs", w)
   end
 
   def parse(file_name, dir_name, app_name, module_name, agent) do
@@ -196,6 +233,7 @@ end"
     end)
 
     rest = rest
+           |> apply_multiline(agent)
            |> apply_shortcuts(agent)
            |> String.trim_trailing()
 
@@ -878,6 +916,7 @@ end"
         :os.cmd('echo "" >> #{file}')
 
         rest_lines = rest
+                     |> apply_multiline(agent)
                      |> apply_shortcuts(agent)
                      |> String.split("\n")
 
@@ -1384,6 +1423,34 @@ end"
     end)
   end
 
+  # FIXME shortcut applying is all over the place, slowing parser down
+  defp apply_multiline(str, agent) do
+    # TODO shortcuts stored as &name => <shortcut> but snippets stored as name => <snippet>
+    # (no &~ for snippet!)
+    str
+    |> String.split("\n")
+    |> Enum.map(&(String.split(&1, "&+")))
+    |> Enum.map(fn cur ->
+      case cur do
+        [indent, name] ->
+          snip_lines = get_snippet(name, agent)
+
+          if snip_lines do
+            snip_lines
+            |> Enum.map(fn cur ->
+              indent <> cur
+            end)
+          else
+            cur
+          end
+        _ ->
+          cur
+      end
+    end)
+    |> List.flatten()
+    |> Enum.reduce("", fn cur, acc -> acc <> cur <> "\n" end)
+  end
+
   defp apply_shortcuts(str, agent) do
     agent
     |> Agent.get(fn (cur) ->
@@ -1395,6 +1462,7 @@ end"
     end)
   end
 
+  # TODO preload all snippets to make faster
   defp get_snippet(name, agent) do
     agent
     |> Agent.get(fn (cur) ->
