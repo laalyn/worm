@@ -950,6 +950,8 @@ import_config \"\#{Mix.env()}.exs\""
         v2 = Enum.reduce(vars, "", fn ({wh, cur}, acc) ->
           acc <> (
             case wh do
+              :optional_param ->
+                "      #{cur} = data[\\\"#{cur}\\\"]\n\n"
               :param ->
                 "      #{cur} = data[\\\"#{cur}\\\"]\n\n"
              <> "      if #{cur} === nil do\n"
@@ -993,6 +995,7 @@ import_config \"\#{Mix.env()}.exs\""
     end
   end
 
+  # no longer maintained
   defp parse_create(str, schema, transact, module_name, file_name, num, agent) do
     # TODO transaction and transaction early ending
 
@@ -1062,6 +1065,7 @@ import_config \"\#{Mix.env()}.exs\""
     {vars, [insert | blocks]}
   end
 
+  # no longer maintained
   defp parse_create_field(headers, body, module_name, file_name, num, agent) do
     IO.inspect(headers)
     IO.puts(body)
@@ -1203,6 +1207,8 @@ import_config \"\#{Mix.env()}.exs\""
         {:header, var}
       "|" <> var ->
         {:noop, var}
+      "*" <> var ->
+        {:optional_param, var}
       var ->
         {:param, var}
     end
