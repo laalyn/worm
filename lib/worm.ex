@@ -920,6 +920,7 @@ import_config \"\#{Mix.env()}.exs\""
         rest_lines = rest
                      |> apply_multiline(agent)
                      |> apply_shortcuts(agent)
+                     |> String.replace("&@", v)
                      |> String.split("\n")
 
         # rest_lines = ["# custom code below" | ["" | rest_lines]]
