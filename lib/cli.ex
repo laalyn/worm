@@ -29,7 +29,7 @@ defmodule Worm.CLI do
             |> Enum.uniq()
 
     Enum.each(files, fn (cur) ->
-      IO.puts("parsing #{cur}")
+      IO.puts(IO.ANSI.bright() <> "WORM parsing #{cur}" <> IO.ANSI.reset())
 
       if !String.contains?(cur, ".") do
         raise "ERROR #{cur} unsupported file extension <no file extension>"

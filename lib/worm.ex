@@ -1,5 +1,5 @@
 # --- cleanliness and enjoyability
-# TODO unverbosify inspects
+# TODOINPROGRESS unverbosify inspects
 # TODO easy code edit tools
 # --- performance
 # TODO dont rebuild untouched files (imp this)
@@ -14,20 +14,20 @@ defmodule Worm do
     System.cmd("mix", ["phx.new", dir_name, "--app", app_name, "--module", module_name, "--no-webpack", "--no-html", "--binary-id", "--no-install"])
 
     if File.exists?("#{dir_name}.bak/mix.lock") do
-      IO.puts("keeping old deps")
+      IO.puts("INFO keeping old deps")
 
       System.cmd("cp", ["#{dir_name}.bak/mix.lock", "#{dir_name}/"])
       System.cmd("cp", ["-r", "#{dir_name}.bak/deps", "#{dir_name}/"])
     end
 
     if File.exists?("#{dir_name}.bak/_build") do
-      IO.puts("keeping old _build")
+      IO.puts("INFO keeping old _build")
 
       System.cmd("cp", ["-r", "#{dir_name}.bak/_build", "#{dir_name}/"])
     end
 
     if File.exists?("#{dir_name}.bak/.idea") do
-      IO.puts("keeping old ide files")
+      IO.puts("INFO keeping old ide files")
 
       System.cmd("cp", ["-r", "#{dir_name}.bak/.idea", "#{dir_name}/"])
       :os.cmd('cp #{dir_name}.bak/*.iml #{dir_name}/')
@@ -174,8 +174,6 @@ import_config \"\#{Mix.env()}.exs\""
           tokens = cur
                    |> String.split(" ", trim: true)
 
-          IO.inspect(tokens)
-
           case hd(tokens) do
             "q" ->
               IO.puts("INFO #{file_name}:#{i} found requirement")
@@ -216,8 +214,6 @@ import_config \"\#{Mix.env()}.exs\""
   end
 
   def parse_custom(file_name, dir_name, app_name, module_name, agent) do
-    IO.inspect(file_name)
-
     lines = file_name
             |> File.read!
             |> String.split("\n")
@@ -248,7 +244,6 @@ import_config \"\#{Mix.env()}.exs\""
         |> tl
         |> Enum.reverse()
         |> Enum.join(".")
-        |> IO.inspect()
 
     uuid = UUID.uuid4()
 
@@ -268,9 +263,6 @@ import_config \"\#{Mix.env()}.exs\""
           |> String.replace("&ins-end", "i$(cat #{file})\"")
           |> String.replace("&{", "sed -i '$ ! s/$/\\\\/' #{file} && sed -i \"")
           |> String.replace("&}", "i$(cat #{file})\"")
-
-      x
-      |> IO.puts
 
       x
       |> to_charlist
@@ -295,9 +287,6 @@ import_config \"\#{Mix.env()}.exs\""
           [] ->
             {">= 0.0.0", ""}
         end
-
-        # line 36
-        IO.puts("adding requirement #{name} to #{dir_name}/mix.exs")
 
         System.cmd("sed", ["-i", "36i\\      {:#{name}, \"#{version}\"#{override}},", "#{dir_name}/mix.exs"])
       [] ->
@@ -435,7 +424,6 @@ import_config \"\#{Mix.env()}.exs\""
             end
           end
         end)
-        |> IO.inspect()
 
         mig_lines = Enum.reverse(mig_lines)
         sch_lines = Enum.reverse(sch_lines)
@@ -446,7 +434,6 @@ import_config \"\#{Mix.env()}.exs\""
 
           {cur.mig_idx, next}
         end, :infinity)
-        |> IO.inspect()
 
         file = "#{dir_name}/priv/repo/migrations/#{idx}_create_#{String.downcase(name)}.exs"
 
@@ -482,8 +469,6 @@ import_config \"\#{Mix.env()}.exs\""
                 acc
                 |> Map.put({name, [cur]}, true)
               else
-                IO.puts("skipped dupe index")
-
                 acc
               end
             end)
@@ -500,8 +485,6 @@ import_config \"\#{Mix.env()}.exs\""
               acc
               |> Map.put({name, fields}, true)
             else
-              IO.puts("skipped dupe index")
-
               acc
             end
           end
@@ -524,8 +507,6 @@ import_config \"\#{Mix.env()}.exs\""
                 acc
                 |> Map.put({name, [cur]}, true)
               else
-                IO.puts("skipped dupe index")
-
                 acc
               end
             end)
@@ -542,8 +523,6 @@ import_config \"\#{Mix.env()}.exs\""
               acc
               |> Map.put({name, fields}, true)
             else
-              IO.puts("skipped dupe index")
-
               acc
             end
           end
@@ -582,9 +561,6 @@ import_config \"\#{Mix.env()}.exs\""
   end
 
   defp parse_schema_field(headers, body, file_name, num, module_name, agent) do
-    IO.inspect(headers)
-    IO.puts(body)
-
     [field, type | _] = headers
 
     field = field
@@ -647,7 +623,6 @@ import_config \"\#{Mix.env()}.exs\""
               {acc, [cur | new], stop}
           end
         end)
-        |> IO.inspect()
 
         a = a
             |> Enum.reverse()
@@ -829,15 +804,11 @@ import_config \"\#{Mix.env()}.exs\""
             end
           end
         end)
-        |> IO.inspect()
-
-        IO.puts("read above ^^^")
 
         {vars, blocks} = case op do
           "C" ->
             {vars, blocks} = head
                              |> parse_create(schema, false, module_name, file_name, num, agent)
-                             |> IO.inspect()
 
             # TODO more fields for 'after' stuff like imports (including manual imports)
 
@@ -845,7 +816,6 @@ import_config \"\#{Mix.env()}.exs\""
           "Ct" ->
             {vars, blocks} = head
                              |> parse_create(schema, true, module_name, file_name, num, agent)
-                             |> IO.inspect()
 
             {vars, blocks}
           "R" ->
@@ -857,7 +827,6 @@ import_config \"\#{Mix.env()}.exs\""
           "V" <> trail ->
             head
             |> parse_validate(trail, module_name, file_name, num, agent)
-            |> IO.inspect()
         end
 
         vars = Enum.filter(vars, fn (cur) ->
@@ -871,10 +840,6 @@ import_config \"\#{Mix.env()}.exs\""
         |> Enum.reverse()
 
         blocks = Enum.reverse(blocks)
-
-        Enum.each(blocks, fn (cur) ->
-          IO.puts(cur <> "\n")
-        end)
 
         p = path
             |> String.replace("/", "_")
@@ -905,7 +870,6 @@ import_config \"\#{Mix.env()}.exs\""
         b = Enum.reduce(blocks, "", fn (cur, acc) ->
           lines = cur
                   |> String.split("\n")
-                  |> IO.inspect()
 
           acc <> Enum.reduce(lines, "", fn (cur, acc) ->
             acc <> "    " <> cur <> "\n"
@@ -991,7 +955,6 @@ import_config \"\#{Mix.env()}.exs\""
 
         # TODO LO_SEVERITY allow root path '/api/'
         call = "10i\\\n\\\n\\    #{method} \\\"/#{path}\\\", #{String.upcase(method)}_#{String.upcase(p)}Controller, :handle"
-        IO.puts(call)
         System.cmd("sed", ["-i", call, "#{dir_name}/lib/#{app_name}_web/router.ex"])
       _ ->
         raise "ERROR #{file_name}:#{num} invalid format"
@@ -1001,8 +964,6 @@ import_config \"\#{Mix.env()}.exs\""
   # no longer maintained
   defp parse_create(str, schema, transact, module_name, file_name, num, agent) do
     # TODO transaction and transaction early ending
-
-    IO.puts(str)
 
     lines = str
             |> String.split("\n")
@@ -1070,9 +1031,6 @@ import_config \"\#{Mix.env()}.exs\""
 
   # no longer maintained
   defp parse_create_field(headers, body, module_name, file_name, num, agent) do
-    IO.inspect(headers)
-    IO.puts(body)
-
     [field, dec | _] = headers
 
     field = field
