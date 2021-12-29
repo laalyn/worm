@@ -200,8 +200,6 @@ import_config \"\#{Mix.env()}.exs\""
 
               {{tokens, "", i}}
             "--" ->
-              IO.puts("INFO #{file_name}:#{i} ignoring comment")
-
               {nil}
             _ ->
               raise "ERROR #{file_name}:#{i} unknown token #{hd(tokens)}"
