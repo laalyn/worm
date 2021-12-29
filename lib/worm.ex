@@ -907,7 +907,7 @@ import_config \"\#{Mix.env()}.exs\""
         :os.cmd('echo "" >> #{file}')
         :os.cmd('echo "  alias #{module_name}Web.FallbackController" >> #{file}')
         :os.cmd('echo "" >> #{file}')
-        :os.cmd('echo "  alias Plug.Conn" >> #{file}')
+        :os.cmd('echo "  alias Plug.Conn, warn: false" >> #{file}')
         :os.cmd('echo "" >> #{file}')
         :os.cmd('echo "  def handle(conn, data) do" >> #{file}')
         :os.cmd('echo "    try do" >> #{file}')
@@ -919,7 +919,7 @@ import_config \"\#{Mix.env()}.exs\""
                 "      #{cur} = data[\\\"#{cur}\\\"]\n\n"
               :param ->
                 "      #{cur} = data[\\\"#{cur}\\\"]\n\n"
-             <> "      if #{cur} === nil do\n"
+             <> "      if #{cur} === nil || #{cur} === \\\"\\\" do\n"
              <> "        raise \\\"miss #{cur}\\\"\n"
              <> "      end\n\n"
               :conn ->
@@ -1198,7 +1198,7 @@ import_config \"\#{Mix.env()}.exs\""
         [action, type | extra] = tokens
 
         new = case action do
-          "v" ->
+          "c" ->
             case type do
               "string" ->
                 rs = case extra do
@@ -1207,14 +1207,24 @@ import_config \"\#{Mix.env()}.exs\""
                     |> apply_shortcuts(agent)
                     |> String.replace("&cur", field)
                   [] ->
-                    "valfail #{type} #{field}"
+                    "castfail #{type} #{field}"
                 end
 
                 [
-                  "if (!String.valid?(#{field}) && #{field} !== nil) || #{field} == \"\" || #{field} == '' do",
-                  "  raise \"#{rs}\"",
+                  "#{field} = case #{field} do",
+                  "  str when str in [nil, \"\"] ->",
+                  "    nil",
+                  "  str ->",
+                  "    if String.valid?(str) do",
+                  "      str",
+                  "    else",
+                  "      raise \"#{rs}\"",
+                  "    end",
                   "end\n"
                 ]
+            end
+          "v" ->
+            case type do
               "`" <> c ->
                 c = c
                     |> String.reverse()
