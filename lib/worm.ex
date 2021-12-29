@@ -1216,7 +1216,7 @@ import_config \"\#{Mix.env()}.exs\""
                   "    nil",
                   "  str ->",
                   "    if String.valid?(str) do",
-                  "      str",
+                  "      String.trim(str)",
                   "    else",
                   "      raise \"#{rs}\"",
                   "    end",
