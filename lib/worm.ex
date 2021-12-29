@@ -1216,6 +1216,28 @@ import_config \"\#{Mix.env()}.exs\""
                   "    nil",
                   "  str ->",
                   "    if String.valid?(str) do",
+                  "      str",
+                  "    else",
+                  "      raise \"#{rs}\"",
+                  "    end",
+                  "end\n"
+                ]
+              "strt" ->
+                rs = case extra do
+                  [msg] ->
+                    msg
+                    |> apply_shortcuts(agent)
+                    |> String.replace("&cur", field)
+                  [] ->
+                    "castfail #{type} #{field}"
+                end
+
+                [
+                  "#{field} = case #{field} do",
+                  "  str when str in [nil, \"\"] ->",
+                  "    nil",
+                  "  str ->",
+                  "    if String.valid?(str) do",
                   "      String.trim(str)",
                   "    else",
                   "      raise \"#{rs}\"",
