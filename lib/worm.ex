@@ -849,8 +849,8 @@ import_config \"\#{Mix.env()}.exs\""
 
         :os.cmd('echo "defmodule #{module_name}.#{String.upcase(method)}_#{String.upcase(p)} do" > #{file}')
         :os.cmd('echo "  import Ecto.Query, warn: false" >> #{file}')
-        :os.cmd('echo "  alias Ecto.UUID" >> #{file}')
-        :os.cmd('echo "  alias #{module_name}.Repo" >> #{file}')
+        :os.cmd('echo "  alias Ecto.UUID, warn: false" >> #{file}')
+        :os.cmd('echo "  alias #{module_name}.Repo, warn: false" >> #{file}')
         # TODO add more schemas custom
         if schema do
           :os.cmd('echo "" >> #{file}')
@@ -1200,79 +1200,19 @@ import_config \"\#{Mix.env()}.exs\""
         new = case action do
           "v" ->
             case type do
-              "empty" ->
+              "string" ->
                 rs = case extra do
                   [msg] ->
                     msg
                     |> apply_shortcuts(agent)
                     |> String.replace("&cur", field)
                   [] ->
-                    "#{type} #{field}"
+                    "valfail #{type} #{field}"
                 end
 
                 [
-                  "if #{field} == \"\" || #{field} == '' do",
+                  "if (!String.valid?(#{field}) && #{field} !== nil) || #{field} == \"\" || #{field} == '' do",
                   "  raise \"#{rs}\"",
-                  "end\n"
-                ]
-              "min-len" ->
-                [len | extra] = extra
-
-                rs = case extra do
-                  [msg] ->
-                    msg
-                    |> apply_shortcuts(agent)
-                    |> String.replace("&cur", field)
-                  [] ->
-                    "#{type} #{len} #{field}"
-                end
-
-                [
-                  "if String.valid?(#{field}) do",
-                  "  if String.length(#{field}) < #{len} do",
-                  "    raise \"#{rs}\"",
-                  "  end",
-                  "else",
-                  "  if length(#{field}) < #{len} do",
-                  "    raise \"#{rs}\"",
-                  "  end",
-                  "end\n"
-                ]
-              # TODO do these
-              "max-len" ->
-                [len] = extra
-
-                [
-                  "if String.valid?(#{field}) do",
-                  "  if String.length(#{field}) > #{len} do",
-                  "    raise \"#{type} #{len} #{field}\"",
-                  "  end",
-                  "else",
-                  "  if length(#{field}) > #{len} do",
-                  "    raise \"#{type} #{len} #{field}\"",
-                  "  end",
-                  "end\n"
-                ]
-              "length" ->
-                [min, max] = extra
-
-                [
-                  "if String.valid?(#{field}) do",
-                  "  if String.length(#{field}) < #{min} || String.length(#{field}) > #{max} do",
-                  "    raise \"#{type} #{min} #{max} #{field}\"",
-                  "  end",
-                  "else",
-                  "  if length(#{field}) < #{min} || length(#{field}) > #{max} do",
-                  "    raise \"#{type} #{min} #{max} #{field}\"",
-                  "  end",
-                  "end\n"
-                ]
-              "regex" ->
-                [regex] = extra
-
-                [
-                  "if !String.match?(#{field}, #{regex}) do",
-                  "  raise \"#{type} #{regex} #{field}\"",
                   "end\n"
                 ]
               "`" <> c ->

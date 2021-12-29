@@ -28,28 +28,42 @@ defmodule Worm.CLI do
     files = files
             |> Enum.uniq()
 
-    Enum.each(files, fn (cur) ->
-      IO.puts(IO.ANSI.bright() <> "WORM parsing #{cur}" <> IO.ANSI.reset())
+    try do
+      Enum.each(files, fn (cur) ->
+        IO.puts(IO.ANSI.bright() <> "WORM parsing #{cur}" <> IO.ANSI.reset())
 
-      if !String.contains?(cur, ".") do
-        raise "ERROR #{cur} unsupported file extension <no file extension>"
-      end
+        if !String.contains?(cur, ".") do
+          raise "ERROR #{cur} unsupported file extension <no file extension>"
+        end
 
-      ext = cur
-            |> String.split(".", trim: true)
-            |> Enum.reverse()
-            |> hd
+        ext = cur
+              |> String.split(".", trim: true)
+              |> Enum.reverse()
+              |> hd
 
-      case ext do
-        "worm" ->
-          Worm.parse(cur, dir_name, app_name, module_name, agent)
-        "wormcm" ->
-          Worm.parse_custom(cur, dir_name, app_name, module_name, agent)
-        "wormenv" ->
-          System.cmd("cp", [cur, "#{dir_name}/.env"])
-        _ ->
-          raise "ERROR #{cur} unsupported file extension '#{ext}'"
-      end
-    end)
+        case ext do
+          "worm" ->
+            Worm.parse(cur, dir_name, app_name, module_name, agent)
+          "wormcm" ->
+            Worm.parse_custom(cur, dir_name, app_name, module_name, agent)
+          "wormenv" ->
+            System.cmd("cp", [cur, "#{dir_name}/.env"])
+          _ ->
+            raise "ERROR #{cur} unsupported file extension '#{ext}'"
+        end
+      end)
+
+      System.cmd("rm", ["-r", "#{dir_name}/_build/dev/lib/#{app_name}"])
+    rescue err ->
+      IO.inspect err
+
+      __STACKTRACE__
+      |> Exception.format_stacktrace()
+      |> IO.write
+
+      System.cmd("rm", ["-r", "#{dir_name}.err"])
+      System.cmd("mv", [dir_name, "#{dir_name}.err"])
+      System.cmd("mv", ["#{dir_name}.bak", dir_name])
+    end
   end
 end
