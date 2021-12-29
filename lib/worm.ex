@@ -1200,7 +1200,7 @@ import_config \"\#{Mix.env()}.exs\""
         new = case action do
           "c" ->
             case type do
-              "string" ->
+              "str" ->
                 rs = case extra do
                   [msg] ->
                     msg
@@ -1236,11 +1236,14 @@ import_config \"\#{Mix.env()}.exs\""
                     |> apply_shortcuts(agent)
                     |> String.replace("&cur", field)
 
-                [p] = extra
-
-                p = p
+                p = case extra do
+                  [p] ->
+                    p
                     |> apply_shortcuts(agent)
                     |> String.replace("&cur", field)
+                  [] ->
+                    "invalid #{field}"
+                end
 
                 [
                   "if #{c} do",
