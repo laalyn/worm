@@ -959,12 +959,13 @@ import_config \"\#{Mix.env()}.exs\""
     end
   end
 
-  # no longer maintained
+  # not really maintained
   defp parse_create(str, schema, transact, module_name, file_name, num, agent) do
     # TODO transaction and transaction early ending
 
     lines = str
             |> String.split("\n")
+            |> apply_incode(agent)
 
     {fields, vars, blocks, _} = lines
                                 |> Enum.with_index(
@@ -1091,6 +1092,7 @@ import_config \"\#{Mix.env()}.exs\""
   defp parse_validate(str, trail, module_name, file_name, num, agent) do
     lines = str
             |> String.split("\n")
+            |> apply_incode(agent)
 
     {blocks, indent} = case trail do
       "Tr" ->
@@ -1361,6 +1363,17 @@ import_config \"\#{Mix.env()}.exs\""
         acc
       end
     end)
+  end
+
+  def apply_incode(lines, agent) do
+    lines
+    |> Enum.map(fn
+      "&-" <> name ->
+        get_snippet(name, agent)
+      cur ->
+        cur
+    end)
+    |> List.flatten()
   end
 
   # FIXME shortcut applying is all over the place, slowing parser down
