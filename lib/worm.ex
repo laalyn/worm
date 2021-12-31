@@ -1202,6 +1202,28 @@ import_config \"\#{Mix.env()}.exs\""
         new = case action do
           "c" ->
             case type do
+              "uuid" ->
+                rs = case extra do
+                  [msg] ->
+                    msg
+                    |> apply_shortcuts(agent)
+                    |> String.replace("&cur", field)
+                  [] ->
+                    "castfail #{type} #{field}"
+                end
+
+                [
+                  "#{field} = if String.valid?(#{field}) do",
+                  "  case UUID.dump(#{field}) do",
+                  "    {:ok, bid} ->",
+                  "      UUID.load!(bid)",
+                  "    _ ->",
+                  "      raise \"#{rs}\"",
+                  "  end",
+                  "else",
+                  "  raise \"#{rs}\"",
+                  "end\n",
+                ]
               "str" ->
                 rs = case extra do
                   [msg] ->
