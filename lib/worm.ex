@@ -4,6 +4,8 @@
 # --- performance
 # TODO dont rebuild untouched files (imp this)
 # TODO files in /dev/shm
+# --- generated code
+# TODO casts should be in the controller
 defmodule Worm do
   def init(dir_name, app_name, module_name) do
     # out folder is completely tmp
@@ -176,27 +178,27 @@ import_config \"\#{Mix.env()}.exs\""
 
           case hd(tokens) do
             "q" ->
-              IO.puts("INFO #{file_name}:#{i} found requirement")
+              IO.puts("INFO #{file_name}:#{i} found requirement #{tl(tokens) |> Enum.join(" ")}")
 
               parse_requirement(tl(tokens), file_name, i, dir_name, app_name, module_name)
 
               {nil}
             "c" ->
-              IO.puts("INFO #{file_name}:#{i} found shortcut")
+              IO.puts("INFO #{file_name}:#{i} found shortcut #{tl(tokens) |> Enum.join(" ")}")
 
               parse_shortcut(tl(tokens), file_name, i, agent)
 
               {nil}
             "n" ->
-              IO.puts("INFO #{file_name}:#{i} found snippet")
+              IO.puts("INFO #{file_name}:#{i} found snippet #{tl(tokens) |> Enum.join(" ")}")
 
               {{tokens, "", i}}
             "s" ->
-              IO.puts("INFO #{file_name}:#{i} found schema")
+              IO.puts("INFO #{file_name}:#{i} found schema #{tl(tokens) |> Enum.join(" ")}")
 
               {{tokens, "", i}}
             "r" ->
-              IO.puts("INFO #{file_name}:#{i} found route")
+              IO.puts("INFO #{file_name}:#{i} found route #{tl(tokens) |> Enum.join(" ")}")
 
               {{tokens, "", i}}
             "--" ->
