@@ -4,8 +4,6 @@
 # --- performance
 # TODO dont rebuild untouched files (imp this)
 # TODO files in /dev/shm
-# --- generated code
-# TODO casts should be in the controller
 defmodule Worm do
   def init(dir_name, app_name, module_name) do
     # out folder is completely tmp
@@ -831,7 +829,7 @@ import_config \"\#{Mix.env()}.exs\""
 
         vars = Enum.filter(vars, fn (cur) ->
           case cur do
-            {:noop, _} ->
+            {:noop, _, _} ->
               false
             _ ->
               true
@@ -861,7 +859,7 @@ import_config \"\#{Mix.env()}.exs\""
         :os.cmd('echo "" >> #{file}')
 
         v = vars
-            |> Enum.reduce("", fn ({_, cur}, acc) -> acc <> cur <> "  " end)
+            |> Enum.reduce("", fn ({_, cur, _}, acc) -> acc <> cur <> "  " end)
             |> String.trim()
             |> String.replace("  ", ", ")
 
@@ -914,7 +912,7 @@ import_config \"\#{Mix.env()}.exs\""
         :os.cmd('echo "  def handle(conn, data) do" >> #{file}')
         :os.cmd('echo "    try do" >> #{file}')
 
-        v2 = Enum.reduce(vars, "", fn ({wh, cur}, acc) ->
+        v2 = Enum.reduce(vars, "", fn ({wh, cur, casts}, acc) ->
           acc <> (
             case wh do
               :optional_param ->
@@ -935,7 +933,44 @@ import_config \"\#{Mix.env()}.exs\""
              <> "          nil\n"
              <> "      end\n\n"
             end
-          )
+          ) <> Enum.reduce(casts, "", fn
+            "uuid", acc ->
+              acc <>
+              "      #{cur} = if String.valid?(#{cur}) do\n" <>
+              "        case Ecto.UUID.dump(#{cur}) do\n" <>
+              "          {:ok, bid} ->\n" <>
+              "            Ecto.UUID.load!(bid)\n" <>
+              "          _ ->\n" <>
+              "            raise \\\"castfail uuid #{cur}\\\"\n" <>
+              "        end\n" <>
+              "      else\n" <>
+              "        raise \\\"castfail uuid #{cur}\\\"\n" <>
+              "      end\n\n"
+            "str", acc ->
+              acc <>
+              "      #{cur} = case #{cur} do\n" <>
+              "        str when str in [nil, \\\"\\\"] ->\n" <>
+              "          nil\n" <>
+              "        str ->\n" <>
+              "          if String.valid?(str) do\n" <>
+              "            str\n" <>
+              "          else\n" <>
+              "            raise \\\"castfail str #{cur}\\\"\n" <>
+              "          end\n" <>
+              "      end\n\n"
+            "strt", acc ->
+              acc <>
+              "      #{cur} = case #{cur} do\n" <>
+              "        str when str in [nil, \\\"\\\"] ->\n" <>
+              "          nil\n" <>
+              "        str ->\n" <>
+              "          if String.valid?(str) do\n" <>
+              "            String.trim(str)\n" <>
+              "          else\n" <>
+              "            raise \\\"castfail str #{cur}\\\"\n" <>
+              "          end\n" <>
+              "      end\n\n"
+          end)
         end)
         |> String.trim()
 
@@ -1163,7 +1198,7 @@ import_config \"\#{Mix.env()}.exs\""
     field = field
             |> apply_shortcuts(agent)
 
-    var = case field do
+    {type, field} = case field do
       "+" <> var ->
         {:conn, var}
       "^" <> var ->
@@ -1176,7 +1211,8 @@ import_config \"\#{Mix.env()}.exs\""
         {:param, var}
     end
 
-    {_, field} = var
+    [field | casts] = field
+                      |> String.split(["(", ")"], trim: true)
 
     blocks = if body do
       parse_field_body(body, field, module_name, file_name, num, agent)
@@ -1184,7 +1220,7 @@ import_config \"\#{Mix.env()}.exs\""
       []
     end
 
-    {var, blocks}
+    {{type, field, casts}, blocks}
   end
 
   # this one is not escaped from raw bash because in `` and using file
@@ -1202,75 +1238,6 @@ import_config \"\#{Mix.env()}.exs\""
         [action, type | extra] = tokens
 
         new = case action do
-          "c" ->
-            case type do
-              "uuid" ->
-                rs = case extra do
-                  [msg] ->
-                    msg
-                    |> apply_shortcuts(agent)
-                    |> String.replace("&cur", field)
-                  [] ->
-                    "castfail #{type} #{field}"
-                end
-
-                [
-                  "#{field} = if String.valid?(#{field}) do",
-                  "  case UUID.dump(#{field}) do",
-                  "    {:ok, bid} ->",
-                  "      UUID.load!(bid)",
-                  "    _ ->",
-                  "      raise \"#{rs}\"",
-                  "  end",
-                  "else",
-                  "  raise \"#{rs}\"",
-                  "end\n",
-                ]
-              "str" ->
-                rs = case extra do
-                  [msg] ->
-                    msg
-                    |> apply_shortcuts(agent)
-                    |> String.replace("&cur", field)
-                  [] ->
-                    "castfail #{type} #{field}"
-                end
-
-                [
-                  "#{field} = case #{field} do",
-                  "  str when str in [nil, \"\"] ->",
-                  "    nil",
-                  "  str ->",
-                  "    if String.valid?(str) do",
-                  "      str",
-                  "    else",
-                  "      raise \"#{rs}\"",
-                  "    end",
-                  "end\n"
-                ]
-              "strt" ->
-                rs = case extra do
-                  [msg] ->
-                    msg
-                    |> apply_shortcuts(agent)
-                    |> String.replace("&cur", field)
-                  [] ->
-                    "castfail #{type} #{field}"
-                end
-
-                [
-                  "#{field} = case #{field} do",
-                  "  str when str in [nil, \"\"] ->",
-                  "    nil",
-                  "  str ->",
-                  "    if String.valid?(str) do",
-                  "      String.trim(str)",
-                  "    else",
-                  "      raise \"#{rs}\"",
-                  "    end",
-                  "end\n"
-                ]
-            end
           "v" ->
             case type do
               "`" <> c ->
