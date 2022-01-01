@@ -970,6 +970,14 @@ import_config \"\#{Mix.env()}.exs\""
               "            raise \\\"castfail str #{cur}\\\"\n" <>
               "          end\n" <>
               "      end\n\n"
+            "int", acc ->
+              acc <>
+              "      #{cur} = case #{cur} do\n" <>
+              "        x when is_integer(x) ->\n" <>
+              "          x\n" <>
+              "        _ ->\n" <>
+              "          raise \\\"castfail int #{cur}\\\"\n" <>
+              "      end\n\n"
           end)
         end)
         |> String.trim()
