@@ -1285,6 +1285,10 @@ import_config \"\#{Mix.env()}.exs\""
                 raise "# not imp'd"
             end
           "t" ->
+            type = type
+                   |> apply_shortcuts(agent)
+                   |> String.replace("&cur", field)
+
             case type do
               "~" <> n ->
                 n = if n == "" do
