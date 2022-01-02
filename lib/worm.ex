@@ -978,6 +978,14 @@ import_config \"\#{Mix.env()}.exs\""
               "        _ ->\n" <>
               "          raise \\\"castfail int #{cur}\\\"\n" <>
               "      end\n\n"
+            "bool", acc ->
+              acc <>
+              "      #{cur} = case #{cur} do\n" <>
+              "        x when is_boolean(x) ->\n" <>
+              "          x\n" <>
+              "        _ ->\n" <>
+              "          raise \\\"castfail bool #{cur}\\\"\n" <>
+              "      end\n\n"
           end)
         end)
         |> String.trim()
