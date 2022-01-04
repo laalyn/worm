@@ -1005,8 +1005,10 @@ import_config \"\#{Mix.env()}.exs\""
         :os.cmd('echo "end" >> #{file}')
 
         # TODO LO_SEVERITY allow root path '/api/'
-        call = "10i\\\n\\\n\\    #{method} \\\"/#{path}\\\", #{String.upcase(method)}_#{String.upcase(p)}Controller, :handle"
-        System.cmd("sed", ["-i", call, "#{dir_name}/lib/#{app_name}_web/router.ex"])
+        if method != "ovr" do
+          call = "10i\\\n\\\n\\    #{method} \\\"/#{path}\\\", #{String.upcase(method)}_#{String.upcase(p)}Controller, :handle"
+          System.cmd("sed", ["-i", call, "#{dir_name}/lib/#{app_name}_web/router.ex"])
+        end
       _ ->
         raise "ERROR #{file_name}:#{num} invalid format"
     end
