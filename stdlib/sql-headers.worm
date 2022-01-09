@@ -1,0 +1,11 @@
+n C
+  Repo.checkout(fn ->
+<==
+
+n T
+  {:ok, result} = Repo.transaction(fn ->
+<==
+
+n R
+  Repo.query!("set transaction isolation level repeatable read")
+<==

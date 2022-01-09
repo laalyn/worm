@@ -1,0 +1,3 @@
+n r
+  ExRabbitPool.with_channel(:publisher_pool, fn {:ok, channel} ->
+<==
