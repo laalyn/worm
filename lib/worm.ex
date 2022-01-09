@@ -1149,20 +1149,11 @@ import_config \"\#{Mix.env()}.exs\""
             |> String.split("\n")
             |> apply_incode(agent)
 
-    {blocks, indent} = case trail do
-      "Tr" ->
-        {["    Repo.query!(\"set transaction isolation level repeatable read\")\n", "  {:ok, result} = Repo.transaction(fn ->", "try do"], "    "}
-      "tr" ->
-        {["  {:ok, result} = Repo.transaction(fn ->", "try do"], "    "}
-      "T" ->
-        {["  Repo.query!(\"set transaction isolation level repeatable read\")\n", "{:ok, result} = Repo.transaction(fn ->"], "  "}
-      "t" ->
-        {["{:ok, result} = Repo.transaction(fn ->"], "  "}
-      "r" ->
-        {["try do"], "  "}
-      "" ->
-        {[], ""}
-    end
+    blocks = trail
+             |> String.graphemes()
+             |> Enum.map(&get_snippet(&1, agent))
+             |> List.flatten()
+             |> Enum.reverse()
 
     {vars, blocks, _} = lines
                         |> Enum.with_index(
@@ -1175,7 +1166,7 @@ import_config \"\#{Mix.env()}.exs\""
           {var, new_blocks} = parse_validate_field(headers, body, module_name, file_name, i, agent)
 
           new_blocks = Enum.map(new_blocks, fn (cur) ->
-            indent <> cur
+            cur
           end)
 
           {[var | vars], new_blocks ++ blocks, nil}
@@ -1205,7 +1196,7 @@ import_config \"\#{Mix.env()}.exs\""
       end
     end)
 
-    blocks = [indent <> "###\n" | blocks]
+    blocks = ["###\n" | blocks]
 
     {vars, blocks}
   end
