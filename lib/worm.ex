@@ -975,14 +975,23 @@ import_config \"\#{Mix.env()}.exs\""
               "      #{cur} = case #{cur} do\n" <>
               "        x when is_integer(x) ->\n" <>
               "          x\n" <>
-              "        _ ->\n" <>
-              "          raise \\\"castfail int #{cur}\\\"\n" <>
+              "        x ->\n" <>
+              "          case Integer.parse(x) do\n" <>
+              "            {x, \\\"\\\"} ->\n" <>
+              "              x\n" <>
+              "            _ ->\n" <>
+              "              raise \\\"castfail int #{cur}\\\"\n" <>
+              "          end\n" <>
               "      end\n\n"
             "bool", acc ->
               acc <>
               "      #{cur} = case #{cur} do\n" <>
               "        x when is_boolean(x) ->\n" <>
               "          x\n" <>
+              "        \\\"true\\\" ->\n" <>
+              "          true\n" <>
+              "        \\\"false\\\" ->\n" <>
+              "          false\n" <>
               "        _ ->\n" <>
               "          raise \\\"castfail bool #{cur}\\\"\n" <>
               "      end\n\n"
