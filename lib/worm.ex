@@ -60,6 +60,8 @@ defmodule Worm do
 "defmodule #{module_name}Web.FallbackController do
   use #{module_name}Web, :controller
 
+  alias Plug.Conn
+
   def call(conn, err) do
     err = err
           |> IO.inspect()
@@ -90,12 +92,13 @@ defmodule Worm do
         end
     end
 
-    if conn do
-      conn
-      |> put_status(:bad_request)
-      |> json(%{error: err})
-    else
-      %{reason: err}
+    case conn do
+      %Conn{} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: err})
+      _ ->
+        {:error, %{reason: err}}
     end
   end
 end"
@@ -907,7 +910,7 @@ import_config \"\#{Mix.env()}.exs\""
         :os.cmd('echo "" >> #{file}')
         :os.cmd('echo "  alias #{module_name}Web.FallbackController" >> #{file}')
         :os.cmd('echo "" >> #{file}')
-        :os.cmd('echo "  alias Plug.Conn, warn: false" >> #{file}')
+        :os.cmd('echo "  alias Plug.Conn" >> #{file}')
         :os.cmd('echo "" >> #{file}')
         :os.cmd('echo "  def handle(conn, data) do" >> #{file}')
         :os.cmd('echo "    try do" >> #{file}')
@@ -999,13 +1002,19 @@ import_config \"\#{Mix.env()}.exs\""
         end)
         |> String.trim()
 
+        # TODO should the conn nil check be removed and action instead be inlined?
         :os.cmd('echo "      #{v2}" >> #{file}')
         :os.cmd('echo "" >> #{file}')
         :os.cmd('echo "      result = #{String.upcase(method)}_#{String.upcase(p)}.run!(#{v})" >> #{file}')
         :os.cmd('echo "" >> #{file}')
-        :os.cmd('echo "      conn" >> #{file}')
-        :os.cmd('echo "      |> put_status(:ok)" >> #{file}')
-        :os.cmd('echo "      |> json(result)" >> #{file}')
+        :os.cmd('echo "      case conn do" >> #{file}')
+        :os.cmd('echo "        %Conn{} ->" >> #{file}')
+        :os.cmd('echo "          conn" >> #{file}')
+        :os.cmd('echo "          |> put_status(:ok)" >> #{file}')
+        :os.cmd('echo "          |> json(result)" >> #{file}')
+        :os.cmd('echo "        _ ->" >> #{file}')
+        :os.cmd('echo "          {:ok, result, conn}" >> #{file}')
+        :os.cmd('echo "      end" >> #{file}')
         :os.cmd('echo "    rescue err ->" >> #{file}')
         :os.cmd('echo "      IO.inspect(__STACKTRACE__)" >> #{file}')
         :os.cmd('echo "      FallbackController.call(conn, {:error, err})" >> #{file}')
