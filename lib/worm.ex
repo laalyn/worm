@@ -1427,14 +1427,17 @@ import_config \"\#{Mix.env()}.exs\""
   end
 
   defp apply_shortcuts(str, agent) do
-    agent
-    |> Agent.get(fn (cur) ->
-      cur.shortcuts
-    end, :infinity)
-    |> Enum.reduce(str, fn ({this, that}, acc) ->
-      acc
-      |> String.replace(this, that)
-    end)
+    str = 
+      agent
+      |> Agent.get(fn (cur) ->
+        cur.shortcuts
+      end, :infinity)
+      |> Enum.reduce(str, fn ({this, that}, acc) ->
+        acc
+        |> String.replace(this, that)
+      end)
+
+    Regex.replace(~r/\$([\w\d\!]+)?/, str, fn "$" <> var -> "#{var}: #{var}" end)
   end
 
   # TODO preload all snippets to make faster
