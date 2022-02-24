@@ -694,6 +694,8 @@ import_config \"\#{Mix.env()}.exs\""
     {mig_line, sch_line} = case field do
       "&id" ->
         {"add :id, #{mig_type}, primary_key: true", "field :id, #{sch_type}, [autogenerate: true, primary_key: true]"}
+      "&id{noa}" ->
+        {"add :id, #{mig_type}, primary_key: true", "field :id, #{sch_type}, [autogenerate: false, primary_key: true]"}
       "&ts{" <> dat ->
         dat = dat
               |> String.reverse()
