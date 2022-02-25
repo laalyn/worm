@@ -641,23 +641,23 @@ import_config \"\#{Mix.env()}.exs\""
 
         case c do
           "UD" ->
-            {"references(:#{a}, [type: :#{b}, on_update: :update_all, on_delete: :delete_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
+            {"references(:#{a}, [type: :#{b}, on_update: :update_all, on_delete: :delete_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{(if b == "bigint", do: "integer", else: b)}]", [{field, -1}], [], []}
           "Ud" ->
-            {"references(:#{a}, [type: :#{b}, on_update: :update_all, on_delete: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
+            {"references(:#{a}, [type: :#{b}, on_update: :update_all, on_delete: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{(if b == "bigint", do: "integer", else: b)}]", [{field, -1}], [], []}
           "uD" ->
-            {"references(:#{a}, [type: :#{b}, on_update: :nilify_all, on_delete: :delete_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
+            {"references(:#{a}, [type: :#{b}, on_update: :nilify_all, on_delete: :delete_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{(if b == "bigint", do: "integer", else: b)}]", [{field, -1}], [], []}
           "ud" ->
-            {"references(:#{a}, [type: :#{b}, on_update: :nilify_all, on_delete: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
+            {"references(:#{a}, [type: :#{b}, on_update: :nilify_all, on_delete: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{(if b == "bigint", do: "integer", else: b)}]", [{field, -1}], [], []}
           "U" ->
-            {"references(:#{a}, [type: :#{b}, on_update: :update_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
+            {"references(:#{a}, [type: :#{b}, on_update: :update_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{(if b == "bigint", do: "integer", else: b)}]", [{field, -1}], [], []}
           "u" ->
-            {"references(:#{a}, [type: :#{b}, on_update: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
+            {"references(:#{a}, [type: :#{b}, on_update: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{(if b == "bigint", do: "integer", else: b)}]", [{field, -1}], [], []}
           "D" ->
-            {"references(:#{a}, [type: :#{b}, on_delete: :delete_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
+            {"references(:#{a}, [type: :#{b}, on_delete: :delete_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{(if b == "bigint", do: "integer", else: b)}]", [{field, -1}], [], []}
           "d" ->
-            {"references(:#{a}, [type: :#{b}, on_delete: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
+            {"references(:#{a}, [type: :#{b}, on_delete: :nilify_all])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{(if b == "bigint", do: "integer", else: b)}]", [{field, -1}], [], []}
           "" ->
-            {"references(:#{a}, [type: :#{b}])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{b}]", [{field, -1}], [], []}
+            {"references(:#{a}, [type: :#{b}])", "#{module_name}.#{String.upcase(a)}, [foreign_key: :#{field}, type: :#{(if b == "bigint", do: "integer", else: b)}]", [{field, -1}], [], []}
         end
       # TODO `` for type
       _ ->
