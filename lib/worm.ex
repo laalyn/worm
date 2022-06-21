@@ -868,6 +868,12 @@ import_config \"\#{Mix.env()}.exs\""
             |> String.trim()
             |> String.replace("  ", ", ")
 
+        v = if method == "raw" do
+          "sock, " <> v
+        else
+          v
+        end
+
         :os.cmd('echo "  def run!(#{v}) do" >> #{file}')
 
         b = Enum.reduce(blocks, "", fn (cur, acc) ->
@@ -906,16 +912,24 @@ import_config \"\#{Mix.env()}.exs\""
         file = "#{dir_name}/lib/#{app_name}_web/controllers/#{method}_#{String.downcase(p)}_controller.ex"
 
         :os.cmd('echo "defmodule #{module_name}Web.#{String.upcase(method)}_#{String.upcase(p)}Controller do" > #{file}')
-        :os.cmd('echo "  use #{module_name}Web, :controller" >> #{file}')
-        :os.cmd('echo "" >> #{file}')
+        if method != "raw" do
+          :os.cmd('echo "  use #{module_name}Web, :controller" >> #{file}')
+          :os.cmd('echo "" >> #{file}')
+        end
         :os.cmd('echo "  alias #{module_name}.#{String.upcase(method)}_#{String.upcase(p)}" >> #{file}')
         :os.cmd('echo "" >> #{file}')
-        :os.cmd('echo "  alias #{module_name}Web.FallbackController" >> #{file}')
-        :os.cmd('echo "" >> #{file}')
-        :os.cmd('echo "  alias Plug.Conn" >> #{file}')
-        :os.cmd('echo "" >> #{file}')
-        :os.cmd('echo "  def handle(conn, data) do" >> #{file}')
-        :os.cmd('echo "    try do" >> #{file}')
+        if method != "raw" do
+          :os.cmd('echo "  alias #{module_name}Web.FallbackController" >> #{file}')
+          :os.cmd('echo "" >> #{file}')
+          :os.cmd('echo "  alias Plug.Conn" >> #{file}')
+          :os.cmd('echo "" >> #{file}')
+        end
+        if method == "raw" do
+          :os.cmd('echo "  def handle(sock, data) do" >> #{file}')
+        else
+          :os.cmd('echo "  def handle(conn, data) do" >> #{file}')
+          :os.cmd('echo "    try do" >> #{file}')
+        end
 
         v2 = Enum.reduce(vars, "", fn ({wh, cur, casts}, acc) ->
           acc <> (
@@ -1007,25 +1021,33 @@ import_config \"\#{Mix.env()}.exs\""
         # TODO should the conn nil check be removed and action instead be inlined?
         :os.cmd('echo "      #{v2}" >> #{file}')
         :os.cmd('echo "" >> #{file}')
-        :os.cmd('echo "      result = #{String.upcase(method)}_#{String.upcase(p)}.run!(#{v})" >> #{file}')
-        :os.cmd('echo "" >> #{file}')
-        :os.cmd('echo "      case conn do" >> #{file}')
-        :os.cmd('echo "        %Conn{} ->" >> #{file}')
-        :os.cmd('echo "          conn" >> #{file}')
-        :os.cmd('echo "          |> put_status(:ok)" >> #{file}')
-        :os.cmd('echo "          |> json(result)" >> #{file}')
-        :os.cmd('echo "        _ ->" >> #{file}')
-        :os.cmd('echo "          {:ok, result, conn}" >> #{file}')
-        :os.cmd('echo "      end" >> #{file}')
-        :os.cmd('echo "    rescue err ->" >> #{file}')
-        :os.cmd('echo "      IO.inspect(__STACKTRACE__)" >> #{file}')
-        :os.cmd('echo "      FallbackController.call(conn, {:error, err})" >> #{file}')
-        :os.cmd('echo "    end" >> #{file}')
+        if method == "raw" do
+          :os.cmd('echo "      #{String.upcase(method)}_#{String.upcase(p)}.run!(#{v})" >> #{file}')
+        else
+          :os.cmd('echo "      result = #{String.upcase(method)}_#{String.upcase(p)}.run!(#{v})" >> #{file}')
+          :os.cmd('echo "" >> #{file}')
+        end
+        if method != "raw" do
+          :os.cmd('echo "      case conn do" >> #{file}')
+          :os.cmd('echo "        %Conn{} ->" >> #{file}')
+          :os.cmd('echo "          conn" >> #{file}')
+          :os.cmd('echo "          |> put_status(:ok)" >> #{file}')
+          :os.cmd('echo "          |> json(result)" >> #{file}')
+          :os.cmd('echo "        _ ->" >> #{file}')
+          :os.cmd('echo "          {:ok, result, conn}" >> #{file}')
+          :os.cmd('echo "      end" >> #{file}')
+        end
+        if method != "raw" do
+          :os.cmd('echo "    rescue err ->" >> #{file}')
+          :os.cmd('echo "      IO.inspect(__STACKTRACE__)" >> #{file}')
+          :os.cmd('echo "      FallbackController.call(conn, {:error, err})" >> #{file}')
+          :os.cmd('echo "    end" >> #{file}')
+        end
         :os.cmd('echo "  end" >> #{file}')
         :os.cmd('echo "end" >> #{file}')
 
         # TODO LO_SEVERITY allow root path '/api/'
-        if method != "ovr" do
+        if method not in ["ovr", "raw"] do
           call = "10i\\\n\\\n\\    #{method} \\\"/#{path}\\\", #{String.upcase(method)}_#{String.upcase(p)}Controller, :handle"
           System.cmd("sed", ["-i", call, "#{dir_name}/lib/#{app_name}_web/router.ex"])
         end
